@@ -34,7 +34,7 @@ String priorityName(Priority priority) => priority.name;
 
 class Task {
   final String title;
-  final String description;
+  String description;
   final DateTime date;
   final Priority priority;
   bool isDone;

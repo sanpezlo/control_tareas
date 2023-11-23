@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:control_tareas/data/task.dart';
 import 'package:control_tareas/pages/new_task.dart';
 import 'package:control_tareas/pages/pepe.dart';
@@ -70,10 +72,12 @@ class _HomeState extends State<Home> {
                 const SizedBox(width: 10),
                 Checkbox(
                     value: tasks[index].isDone,
-                    onChanged: (value) {
+                    onChanged: (value) async {
                       setState(() {
                         tasks[index].isDone = value!;
                       });
+
+                      await SessionManager().set("tasks", jsonEncode(tasks));
                     })
               ]),
               leading: Text(
@@ -82,10 +86,12 @@ class _HomeState extends State<Home> {
               onTap: () {
                 showTask(context, tasks[index]);
               },
-              onLongPress: () {
+              onLongPress: () async {
                 setState(() {
                   tasks.removeAt(index);
                 });
+
+                await SessionManager().set("tasks", jsonEncode(tasks));
               },
             ),
           );
@@ -112,7 +118,44 @@ class _HomeState extends State<Home> {
                         Text(task.priorityName),
                         Checkbox(
                             value: task.isDone,
-                            onChanged: (value) {
+                            onChanged: (value) async {
+                              // Llamo de la BD
+                              final tasksSession =
+                                  await SessionManager().get("tasks");
+
+                              // si es null lo defino en []
+                              if (tasksSession == null) {
+                                await SessionManager()
+                                    .set("tasks", jsonEncode([]));
+                              } else {
+                                // de caso contrario
+                                final tasks = (tasksSession as List<dynamic>)
+                                    .map((e) => Task.fromJson(
+                                        e as Map<String, dynamic>))
+                                    .toList();
+
+                                // final index = tasks.indexOf(task);
+
+                                final index = tasks.indexWhere((element) =>
+                                    element.title == task.title &&
+                                    element.description == task.description &&
+                                    element.date == task.date &&
+                                    element.priority == task.priority &&
+                                    element.isDone == task.isDone);
+
+                                if (index != -1) {
+                                  // aqui los campos que quieras modificar
+                                  // tasks[index].description = "";
+                                  tasks[index].isDone = value!;
+                                }
+
+                                final tasksJson =
+                                    tasks.map((e) => e.toJson()).toList();
+
+                                await SessionManager()
+                                    .set("tasks", jsonEncode(tasksJson));
+                              }
+
                               setState(() {
                                 setLocalState(() {
                                   task.isDone = value!;
@@ -124,15 +167,6 @@ class _HomeState extends State<Home> {
                   ],
                 ),
                 actions: [
-                  TextButton(
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
-                      onPressed: () {
-                        setState(() {
-                          // tasks.remove(task);
-                        });
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text("Eliminar")),
                   TextButton(
                       onPressed: () {
                         Navigator.of(context).pop();
